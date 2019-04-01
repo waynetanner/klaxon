@@ -44,6 +44,7 @@ class JsonObjectConverter(private val klaxon: Klaxon, private val allPaths: Hash
 
     private fun initIntoUserClass(jsonObject: JsonObject, kc: KClass<*>): Any {
         val typeFor = kc.findAnnotation<TypeFor>()
+        val compositeTypeFor = kc.findAnnotation<CompositeTypeFor>()
         // kc is the desired class in output, but Klaxon might decide to produce a different class
         // in certain conditions, such as a polymorphic class (with a @TypeFor annotation at the class level).
         val concreteClass =
@@ -55,6 +56,11 @@ class JsonObjectConverter(private val klaxon: Klaxon, private val allPaths: Hash
                 val allProperties = Annotations.findNonIgnoredProperties(kc, klaxon.propertyStrategies)
 
                 val pi = createPolymorphicInfo(typeFor, prop, allProperties)
+                calculatePolymorphicClass(pi, jsonObject) ?: throw KlaxonException("Cant't find polymorphic class")
+            }  else if (compositeTypeFor != null) {
+                val allProperties = Annotations.findNonIgnoredProperties(kc, klaxon.propertyStrategies)
+
+                val pi = PolymorphicInfo("", "", compositeTypeFor.adapter)
                 calculatePolymorphicClass(pi, jsonObject) ?: throw KlaxonException("Cant't find polymorphic class")
             } else {
                 kc
@@ -204,7 +210,9 @@ class JsonObjectConverter(private val klaxon: Klaxon, private val allPaths: Hash
         return if (polymorphicInfo != null) {
             // We have polymorphic information for this field. Retrieve its TypeAdapter,
             // instantiate it, and invoke it with the discriminant value.
-            val discriminant = jsonObject[polymorphicInfo.discriminantFieldName] as Any
+            val discriminant = if(polymorphicInfo.discriminantFieldName == "")
+                    jsonObject
+                else jsonObject[polymorphicInfo.discriminantFieldName] as Any
             polymorphicInfo.adapter.createInstance().classFor(discriminant)
         } else {
             null

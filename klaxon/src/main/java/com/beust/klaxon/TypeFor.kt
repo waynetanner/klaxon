@@ -8,3 +8,6 @@ interface TypeAdapter<Output> where Output: Any {
 
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.CLASS)
 annotation class TypeFor(val field: String, val adapter: KClass<out TypeAdapter<*>>)
+
+@Target(AnnotationTarget.CLASS)
+annotation class CompositeTypeFor(val adapter: KClass<out TypeAdapter<*>>)
